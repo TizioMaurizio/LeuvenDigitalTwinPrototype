@@ -1,0 +1,10 @@
+-eseguire broker mqtt (runna mosquitto.exe da cmd nella cartella mosquitto) 
+-andare nella cartella main estratta da ev3gui e eseguire main.bat, se tutto è giusto partirà la gui javafx
+-connettersi alla stessa rete degli ev3
+-eseguire il codice_ev3.py sugli ev3
+-cliccare il tasto refresh nella gui, dovrebbero apparire gli ev3 connessi e pingati tramite mqtt
+-ora si possono creare "pannelli" di controllo per i componenti connessi agli ev3, al momento sta all'utente decidere cose sensate e collegate perchè non c'è ancora alcun check sulla coerenza di ciò che si fa spawnare alla gui
+-i pannelli sono trascinabili in giro e cambiabili di colore cliccando sul nome dell'ev3 :) 
+-per qualunque troubleshooting la guida al codice di vincenzo può tornare utile perchè la gui si interfaccia con quel sistema (codice_ev3.py)
+-IMPORTANTE non fidarsi della gui per operazioni o movimenti critici perchè allo stato attuale può capitare che non rifletta correttamente il sistema reale e quindi pannelli rimasti aperti mandano messaggi mqtt (lo stop per esempio) al vuoto, in poche parole non ha un fungo rosso funzionante per davvero al momento
+

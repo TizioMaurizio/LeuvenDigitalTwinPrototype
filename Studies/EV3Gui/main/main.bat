@@ -1,0 +1,1 @@
+java -jar --module-path %~dp0JavaFX11\lib --add-modules javafx.controls,javafx.fxml --illegal-access=warn main.jar 
