@@ -1,48 +1,69 @@
-using System.Collections.Generic;
 using UnityEngine;
-using M2MqttUnity;
+using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
+using System;
 
-public class MqttReceiver : M2MqttUnityClient
+public class MqttListener : MonoBehaviour
 {
-    [Header("MQTT Settings")]
-    public List<string> topics = new List<string>(); // List of topics to subscribe to
+    private MqttClient client;
 
-    // Event triggered when a new message is received
-    public delegate void MessageReceived(string topic, string message);
-    public event MessageReceived OnMessageReceived;
+    // MQTT broker settings
+    private string brokerAddress = "127.0.0.1";
+    private int brokerPort = 1883; // Default MQTT port
+    private string clientId = "UnityClient";
 
-    protected override void SubscribeTopics()
+    // Topic to subscribe to (wildcard #)
+    private string topic = "#";
+
+    void Start()
     {
-        if (topics.Count > 0)
+        try
         {
-            client.Subscribe(topics.ToArray(), new byte[topics.Count]);
-            Debug.Log("Subscribed to topics: " + string.Join(", ", topics));
+            // Create a new MQTT client instance
+            client = new MqttClient(brokerAddress, brokerPort, false, null, null, MqttSslProtocols.None);
+
+            // Register to message received event
+            client.MqttMsgPublishReceived += OnMessageReceived;
+
+            // Connect to the broker
+            client.Connect(clientId);
+
+            if (client.IsConnected)
+            {
+                Debug.Log("Connected to MQTT broker");
+
+                // Subscribe to the topic with wildcard #
+                client.Subscribe(new string[] { topic }, new byte[] { MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE });
+                Debug.Log("Subscribed to topic: " + topic);
+            }
+            else
+            {
+                Debug.LogError("Failed to connect to MQTT broker");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("MQTT Error: " + ex.Message);
         }
     }
 
-    protected override void UnsubscribeTopics()
+    private void OnMessageReceived(object sender, MqttMsgPublishEventArgs e)
     {
-        if (topics.Count > 0)
-        {
-            client.Unsubscribe(topics.ToArray());
-            Debug.Log("Unsubscribed from topics: " + string.Join(", ", topics));
-        }
+        // Convert the received message to a string
+        string message = System.Text.Encoding.UTF8.GetString(e.Message);
+
+        // Log the received message
+        Debug.Log("Received message on topic: " + e.Topic + " Message: " + message);
     }
 
-    protected override void DecodeMessage(string topic, byte[] message)
-    {
-        string msg = System.Text.Encoding.UTF8.GetString(message);
-        Debug.Log($"Received message on topic '{topic}': {msg}");
-        OnMessageReceived?.Invoke(topic, msg);
-    }
-
-    public void PublishMessage(string topic, string message)
+    void OnDestroy()
     {
         if (client != null && client.IsConnected)
         {
-            client.Publish(topic, System.Text.Encoding.UTF8.GetBytes(message), MqttMsgBase.QOS_LEVEL_AT_LEAST_ONCE, false);
-            Debug.Log($"Published message to topic '{topic}': {message}");
+            // Unsubscribe and disconnect when the object is destroyed
+            client.Unsubscribe(new string[] { topic });
+            client.Disconnect();
+            Debug.Log("Disconnected from MQTT broker");
         }
     }
 }

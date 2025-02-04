@@ -4,12 +4,35 @@ import time
 from threading import Thread, Lock
 from dataclasses import dataclass
 from pynput import keyboard
+import socket
+import traceback
 
 # Configurazione simulata EV3
 EV3_NAME = "EV3"
 BROKER = "localhost"
 PORT = 1883
 
+# Configuration
+UDP_IP = "127.0.0.1"  # Localhost
+
+# Function to send speed value
+def send_speed(port, speed):
+    try:
+        # Create a UDP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+        # Convert the speed to a string and encode it
+        message = str(speed).replace(".", ",").encode('utf-8')
+        # Send the message to the Unity application
+        sock.sendto(message, (UDP_IP, int(port)))
+        print(f"Sent speed: {message} on port {port}")
+        
+        # Close the socket
+        sock.close()
+    except Exception as e:
+        print(f"Error sending UDP message: {e}")
+        
+        
 # Mappatura tasti-colori
 KEY_COLOR_MAP = {
     '1': 'red',
@@ -18,6 +41,15 @@ KEY_COLOR_MAP = {
     '5': 'yellow',
     '6': 'white'
 }
+
+MOTOR_PORT_MAP = {
+    "outA": "11002",
+    "outB": "11003",
+    "outC": "11004",
+    "outD": "11005"
+}
+
+SPEED_DOWNSCALE_FACTOR = 1000
 
 @dataclass
 class Motor:
@@ -118,7 +150,9 @@ class EV3Simulator:
                 self.handle_stop()
 
         except Exception as e:
+            print(topic + " - " + str(payload))
             print(f"Errore: {str(e)}")
+            traceback.print_exc()
 
     def handle_config(self, payload):
         print(f"Configurazione EV3: {payload}")
@@ -151,20 +185,22 @@ class EV3Simulator:
     def handle_motor_command(self, topic, payload):
         motor_name = payload.get("motor")
         action = topic.split("/")[-1]
-        values = payload.get("value", {})
+        value = payload.get("value", 0)
 
-        print(f"Comando motore {motor_name}: {action} - {values}")
+        print(f"Comando motore {motor_name}: {action} - {value}")
 
         if action == "forever":
-            self.motors[motor_name].speed = values.get("speed", 0)
+            #self.motors[motor_name].speed = value
+            send_speed(MOTOR_PORT_MAP[motor_name], value / SPEED_DOWNSCALE_FACTOR)
         
         elif action == "abs":
-            self.motors[motor_name].angle = values.get("angle1", 0)
+            #self.motors[motor_name].angle = value.get("angle1", 0)
             time.sleep(2)
-            self.motors[motor_name].angle = values.get("angle2", 0)
+            #self.motors[motor_name].angle = value.get("angle2", 0)
         
         elif action == "stop":
-            self.motors[motor_name].speed = 0
+            #self.motors[motor_name].speed = 0
+            send_speed(MOTOR_PORT_MAP[motor_name], 0)
 
     def handle_sensor_question(self, payload):
         sensor_name = payload.get("sensor")

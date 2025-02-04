@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 
 # Define the MQTT broker details
-broker = "broker.hivemq.com"  # Replace with your broker address
+broker = "127.0.0.1"  # Replace with your broker address
 port = 1883
 topic = "#"  # Use the '#' wildcard to listen to all topics
 
