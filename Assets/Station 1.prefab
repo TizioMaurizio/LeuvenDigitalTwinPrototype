@@ -173,7 +173,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ba6bb9af7032e74ba711e0bc3885a63, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  port: 11000
+  udpPort: 11000
 --- !u!33 &3484958826743425517
 MeshFilter:
   m_ObjectHideFlags: 0

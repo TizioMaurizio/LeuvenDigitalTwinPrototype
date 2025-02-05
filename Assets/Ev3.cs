@@ -27,8 +27,20 @@ public class Ev3 : MonoBehaviour
 
     private Dictionary<string, GameObject> portsDict = new Dictionary<string, GameObject>();
     private Dictionary<string, float> portsValuesDict = new Dictionary<string, float>();
+    private bool newValue = false;
 
-
+    void Awake()
+    {
+        
+        //for each gameobject in items of portsDict set material to material of this gameobject
+        foreach (KeyValuePair<string, GameObject> entry in portsDict)
+        {
+            if (entry.Value != null)
+            {
+                entry.Value.GetComponent<Renderer>().material = gameObject.GetComponent<Renderer>().material;
+            }
+        }
+    }
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -57,10 +69,20 @@ public class Ev3 : MonoBehaviour
         portsValuesDict.Add("in2", 0);
         portsValuesDict.Add("in3", 0);
         portsValuesDict.Add("in4", 0);
+
     }
 
     // Update is called once per frame
     void FixedUpdate()
+    {
+        if (newValue)
+        {
+            UpdatePorts();
+            newValue = false;
+        }
+    }
+
+    void UpdatePorts()
     {
         //outA.GetComponent<LargeMotor>().speed = portsValuesDict["outA"];
         foreach (KeyValuePair<string, GameObject> entry in portsDict)
@@ -98,6 +120,7 @@ public class Ev3 : MonoBehaviour
             {
                 float speed = float.Parse(entry.Value);
                 portsValuesDict[entry.Key] = speed;
+                newValue = true;
             }
         }
     }
