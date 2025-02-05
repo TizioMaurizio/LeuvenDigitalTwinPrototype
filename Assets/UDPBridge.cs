@@ -6,7 +6,7 @@ using System.Threading;
 
 public class UDPBridge : MonoBehaviour
 {
-    public int port = 11000; // UDP port to receive messages
+    public int udpPort = 11000; // UDP port to receive messages
     private UdpClient udpClient;
     private Thread receiveThread;
     private bool isRunning = true;
@@ -28,7 +28,7 @@ public class UDPBridge : MonoBehaviour
         }
 
         // Initialize UDP client
-        udpClient = new UdpClient(port);
+        udpClient = new UdpClient(udpPort);
 
         // Start a thread to receive messages
         receiveThread = new Thread(new ThreadStart(ReceiveMessages));
@@ -49,7 +49,7 @@ public class UDPBridge : MonoBehaviour
 
     void ReceiveMessages()
     {
-        IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
+        IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, udpPort);
 
         while (isRunning)
         {
