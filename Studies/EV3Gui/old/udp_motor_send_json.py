@@ -2,7 +2,7 @@ import socket
 
 # Configuration
 UDP_IP = "127.0.0.1"  # Localhost
-UDP_PORT = 11003       # Port must match the Unity script
+UDP_PORT = 11002       # Port must match the Unity script
 
 # Function to send speed value
 def send_speed(json_message):

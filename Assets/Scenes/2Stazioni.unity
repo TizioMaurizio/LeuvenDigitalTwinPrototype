@@ -4236,6 +4236,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5530770530086527428, guid: 6ab800671691abf4a8582f0a95468c21, type: 3}
+      propertyPath: targetPort
+      value: 25669
+      objectReference: {fileID: 0}
     - target: {fileID: 7069215880133103896, guid: 6ab800671691abf4a8582f0a95468c21, type: 3}
       propertyPath: m_Name
       value: ColorSensorA

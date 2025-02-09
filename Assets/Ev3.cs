@@ -27,6 +27,7 @@ public class Ev3 : MonoBehaviour
 
     private Dictionary<string, GameObject> portsDict = new Dictionary<string, GameObject>();
     private Dictionary<string, float> portsValuesDict = new Dictionary<string, float>();
+    private Dictionary<string, bool> portsChangedDict = new Dictionary<string, bool>();
     private bool newValue = false;
 
     void Awake()
@@ -69,6 +70,14 @@ public class Ev3 : MonoBehaviour
         portsValuesDict.Add("in2", 0);
         portsValuesDict.Add("in3", 0);
         portsValuesDict.Add("in4", 0);
+        portsChangedDict.Add("outA", false);
+        portsChangedDict.Add("outB", false);
+        portsChangedDict.Add("outC", false);
+        portsChangedDict.Add("outD", false);
+        portsChangedDict.Add("in1", false);
+        portsChangedDict.Add("in2", false);
+        portsChangedDict.Add("in3", false);
+        portsChangedDict.Add("in4", false);
 
     }
 
@@ -87,7 +96,7 @@ public class Ev3 : MonoBehaviour
         //outA.GetComponent<LargeMotor>().speed = portsValuesDict["outA"];
         foreach (KeyValuePair<string, GameObject> entry in portsDict)
         {
-            if (entry.Value != null)
+            if (entry.Value != null && portsChangedDict[entry.Key])
             {
                 if (entry.Value.GetComponent<LargeMotor>() != null)
                 {
@@ -101,6 +110,7 @@ public class Ev3 : MonoBehaviour
                 {
                     entry.Value.GetComponent<Ev3Button>().press = portsValuesDict[entry.Key] == 1;
                 }
+                portsChangedDict[entry.Key] = false;
             }
         }
     }
@@ -121,6 +131,10 @@ public class Ev3 : MonoBehaviour
                 float speed = float.Parse(entry.Value);
                 portsValuesDict[entry.Key] = speed;
                 newValue = true;
+            }
+            if (portsChangedDict.ContainsKey(entry.Key))
+            {
+                portsChangedDict[entry.Key] = true;
             }
         }
     }

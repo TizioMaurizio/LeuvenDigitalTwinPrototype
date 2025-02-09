@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from pynput import keyboard
 import socket
 import traceback
-import cv2
-import numpy as np
 
 # Configurazione simulata EV3
 #EV3_NAME = "EV3A"
@@ -17,10 +15,6 @@ PORT = 1883
 # Configuration
 UDP_IP = "127.0.0.1"  # Localhost
 
-MAX_ERROR_NUNMBER = 2
-
-mqtt_broker = BROKER
-mqtt_port = PORT
 
         
 # Mappatura tasti-colori
@@ -32,18 +26,7 @@ KEY_COLOR_MAP = {
     '6': 'white'
 }
 
-# Color detection parameters
-color_ranges = {
-    'unknown': [(np.array([0, 0, 0]), np.array([180, 255, 50]))],  # Very dark colors
-    'red': [
-        (np.array([0, 120, 150]), np.array([10, 255, 255])),      # Bright reds
-        (np.array([160, 120, 150]), np.array([180, 255, 255]))    # Deep reds
-    ],
-    'green': [(np.array([40, 100, 100]), np.array([80, 255, 255]))],
-    'blue': [(np.array([100, 100, 100]), np.array([140, 255, 255]))],
-    'yellow': [(np.array([20, 100, 100]), np.array([40, 255, 255]))],
-    'white': [(np.array([0, 0, 200]), np.array([180, 30, 255]))]
-}
+
 
 SPEED_DOWNSCALE_FACTOR = 1000
 
@@ -79,24 +62,7 @@ class EV3Simulator:
             "outC": self.UDP_PORT,
             "outD": self.UDP_PORT
         }
-        
-        self.SENSOR_PORT_MAP = {
-            "inA": self.UDP_PORT + 1000,
-            "inB": self.UDP_PORT + 2000,
-            "inC": self.UDP_PORT + 3000,
-            "inD": self.UDP_PORT + 4000
-        }
-        
-        self.sensor_socks = {}
-        for port in self.SENSOR_PORT_MAP.values():
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.bind((UDP_IP, port))
-            sock.settimeout(2)
-            self.sensor_socks[port] = sock
-            
-        for sock in self.sensor_socks.values():
-            Thread(target=self.sensor_loop, args=(sock,), daemon=True).start()
-        
+
         # Inizializza sensori con tasti associati
         self.init_key_sensors()
         
@@ -251,10 +217,40 @@ class EV3Simulator:
         self.running = False
         self.client.disconnect()
 
+    def sensor_loop(self):
+        """Aggiornamento periodico dei sensori"""
+        while self.running:
+            with self.key_lock:
+                current_color = "unknown"
+                #check if one sensor value is != "unknown"
+                for sensor in self.sensors.values():
+                    if sensor.active:
+                        if sensor.value != "unknown":
+                            current_color = sensor.value
+                for sensor in self.sensors.values():
+                    #if value is not unknown, publish the value
+                    #if sensor.active:
+                        if self.prev_color != current_color:
+                            
+                            message = json.dumps({
+                                    "ev3": self.EV3_NAME,
+                                    "sensor": sensor.name,
+                                    "value": current_color,
+                                    "ts": time.time()
+                                })
+                            print(f"Invio messaggio: {message}")
+                            self.client.publish(
+                                "sensor/on_change",
+                                message,
+                                qos=2
+                            )
+                            self.prev_color = current_color
+            time.sleep(0.1)
+
     def run(self):
         self.client.connect(BROKER, PORT, 60)
         #self.keyboard_listener.start()
-        #Thread(target=self.sensor_loop, daemon=True).start()
+        Thread(target=self.sensor_loop, daemon=True).start()
         self.client.loop_forever()
         
     # Function to send speed value
@@ -293,73 +289,6 @@ class EV3Simulator:
                 sock.close()
         except Exception as e:
             print(f"Error sending UDP message: {e}")
-            
-    def detect_dominant_color(self, frame):
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        max_area = 0
-        dominant_color = 'unknown'
-
-        color_areas = {}
-        
-        for color_name, ranges in color_ranges.items():
-            mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
-            for lower, upper in ranges:
-                mask = cv2.bitwise_or(mask, cv2.inRange(hsv, lower, upper))
-            area = cv2.countNonZero(mask)
-            color_areas[color_name] = area
-
-        dominant_color = max(color_areas, key=color_areas.get)
-        return dominant_color
-
-    def sensor_loop(self, sock):
-        print(f"Sensor loop for ev3 {self.EV3_NAME} started on port {sock.getsockname()[1]}")
-        previous_color = None
-        sensor_window_name = f"{sock.getsockname()[1]} - {self.EV3_NAME}"
-        cv2.namedWindow(f"{sensor_window_name}", cv2.WINDOW_NORMAL)
-        """Aggiornamento periodico dei sensori"""
-        number_of_errors = 0
-        while self.running:
-            #with self.key_lock:
-            try:
-                data, addr = sock.recvfrom(65536)
-                if data.startswith(b'time'):
-                    timestring = data.decode()[5:]
-                    print(f"Latency: {time.time() - float(timestring):.3f}s")
-                else:
-                    frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), -1)
-                    if frame is not None:
-                        # Detect dominant color
-                        current_color = self.detect_dominant_color(frame)
-                        
-                        # Update display with color information
-                        cv2.putText(frame, f"Dominant: {current_color}", (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        cv2.imshow(f"{sensor_window_name}", frame)
-                        
-                        # Publish on color change
-                        if current_color != previous_color:
-                            print(f"Detected color: {current_color}")
-                            #form message like  {"ev3": "EV3", "sensor": "color_sensor_1", "value": "unknown", "ts": 1738626790.2187595}
-                            message = json.dumps({
-                                "ev3": "EV3",
-                                "sensor": "color_sensor_1",
-                                "value": current_color,
-                                "ts": time.time()
-                            })
-                            self.client.publish("sensor/on_change", message, qos=2)
-                            previous_color = current_color
-
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-
-            except socket.error as e:
-                print(f"Error receiving frame: {e} on sensor {sock.getsockname()[1]}")
-                number_of_errors += 1
-                time.sleep(1)
-            if number_of_errors > MAX_ERROR_NUNMBER:
-                print(f"Too many errors on sensor {sock.getsockname()[1]}, stopping sensor loop")
-                break
-
 
 if __name__ == "__main__":
     #simulator = EV3Simulator()
