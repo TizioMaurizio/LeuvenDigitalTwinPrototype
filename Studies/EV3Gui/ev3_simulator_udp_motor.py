@@ -16,8 +16,9 @@ PORT = 1883
 #UDP_PORT = 11002
 # Configuration
 UDP_IP = "127.0.0.1"  # Localhost
+SHOW = False
 
-MAX_ERROR_NUNMBER = 2
+MAX_ERROR_NUMBER = 99999
 
 mqtt_broker = BROKER
 mqtt_port = PORT
@@ -72,7 +73,7 @@ class EV3Simulator:
         self.key_lock = Lock()
         self.prev_color = ""
         self.UDP_PORT = UDP_PORT
-        self.EV3_NAME = f"EV3{str(UDP_PORT)[-1]}"
+        self.EV3_NAME = self.name_from_port(UDP_PORT)
         self.MOTOR_PORT_MAP = {
             "outA": self.UDP_PORT,
             "outB": self.UDP_PORT,
@@ -108,11 +109,22 @@ class EV3Simulator:
         #self.keyboard_listener = keyboard.Listener(
         #    on_press=self.on_key_press
         #)
+        
+    def name_from_port(self, port):
+        color_numbers = {
+            11002: "B",
+            11003: "G",
+            11004: "O",
+            11005: "R",
+            11006: "Y"
+        }
+        #f"EV3{str(UDP_PORT)[-1]}"
+        return f"EV3{color_numbers.get(port, 'X')}"
 
     def init_key_sensors(self):
         """Inizializza sensori con mappatura tasti"""
         for key, color in KEY_COLOR_MAP.items():
-            sensor_name = f"color_sensor_{key}"
+            sensor_name = f"{self.EV3_NAME}{key}"
             self.sensors[sensor_name] = Sensor(
                 name=sensor_name,
                 port=f"in{key}",
@@ -215,7 +227,7 @@ class EV3Simulator:
 
         if action == "forever":
             #self.motors[motor_name].speed = value
-            self.send_speed(self.MOTOR_PORT_MAP[motor_name], motor_name, value / SPEED_DOWNSCALE_FACTOR)
+            self.send_speed(self.MOTOR_PORT_MAP[motor_name], motor_name, int(value) / SPEED_DOWNSCALE_FACTOR)
 
         if action == "rel":
             #self.motors[motor_name].speed = value
@@ -315,7 +327,7 @@ class EV3Simulator:
         print(f"Sensor loop for ev3 {self.EV3_NAME} started on port {sock.getsockname()[1]}")
         previous_color = None
         sensor_window_name = f"{sock.getsockname()[1]} - {self.EV3_NAME}"
-        cv2.namedWindow(f"{sensor_window_name}", cv2.WINDOW_NORMAL)
+        #cv2.namedWindow(f"{sensor_window_name}", cv2.WINDOW_NORMAL)
         """Aggiornamento periodico dei sensori"""
         number_of_errors = 0
         while self.running:
@@ -331,18 +343,19 @@ class EV3Simulator:
                         # Detect dominant color
                         current_color = self.detect_dominant_color(frame)
                         
-                        # Update display with color information
-                        cv2.putText(frame, f"Dominant: {current_color}", (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        cv2.imshow(f"{sensor_window_name}", frame)
+                        if SHOW:
+                            # Update display with color information
+                            cv2.putText(frame, f"Dominant: {current_color}", (10, 30),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                            cv2.imshow(f"{sensor_window_name}", frame)
                         
                         # Publish on color change
                         if current_color != previous_color:
                             print(f"Detected color: {current_color}")
                             #form message like  {"ev3": "EV3", "sensor": "color_sensor_1", "value": "unknown", "ts": 1738626790.2187595}
                             message = json.dumps({
-                                "ev3": "EV3",
-                                "sensor": "color_sensor_1",
+                                "ev3": self.EV3_NAME,
+                                "sensor": f"in{str(sock.getsockname()[1] - 1000)[1]}",
                                 "value": current_color,
                                 "ts": time.time()
                             })
@@ -353,10 +366,10 @@ class EV3Simulator:
                         break
 
             except socket.error as e:
-                print(f"Error receiving frame: {e} on sensor {sock.getsockname()[1]}")
+                #print(f"Error receiving frame: {e} on sensor {sock.getsockname()[1]}")
                 number_of_errors += 1
                 time.sleep(1)
-            if number_of_errors > MAX_ERROR_NUNMBER:
+            if number_of_errors > MAX_ERROR_NUMBER:
                 print(f"Too many errors on sensor {sock.getsockname()[1]}, stopping sensor loop")
                 break
 
@@ -367,7 +380,7 @@ if __name__ == "__main__":
     #simulator.run()
     #init simulators for ports 11002, 11003, 11004, 11005, each on separate threads
     simulators = []
-    for i in range(2, 6):
+    for i in range(2, 7):
         simulator = EV3Simulator(11000 + i)
         simulators.append(simulator)
         Thread(target=simulator.run, daemon=True).start()
