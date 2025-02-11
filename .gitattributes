@@ -1,0 +1,2 @@
+Studies/EV3Gui/main/JavaFX11/bin/jfxwebkit.dll filter=lfs diff=lfs merge=lfs -text
+Studies/EV3Gui.zip filter=lfs diff=lfs merge=lfs -text
