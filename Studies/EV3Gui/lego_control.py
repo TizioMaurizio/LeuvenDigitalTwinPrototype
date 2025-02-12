@@ -171,7 +171,7 @@ while True:
                 print(f"Logging {len(log_df)} messages to excel file")
                 excel_df = pd.read_excel("system_log.xlsx")
                 log_df_pandas = pd.DataFrame(log_df)
-                log_df_pandas = pd.concat([excel_df, log_df])
+                log_df_pandas = pd.concat([excel_df, log_df_pandas])
                 log_df_pandas.to_excel("system_log.xlsx", index=False)
                 log_df = []
             current_log = 0
